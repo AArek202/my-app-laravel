@@ -1,3 +1,6 @@
+// LOOK HERE
+
+
 @foreach($posts as $post)
 <div>
     <h2>{{ $post['title'] }}</h2>
