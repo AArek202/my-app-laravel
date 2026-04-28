@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class PostController extends Controller
@@ -12,7 +13,7 @@ class PostController extends Controller
      */
     public function index()
     {
-        $posts = Post::all();
+        $posts = Post::withTrashed()->latest()->paginate(10);
         return view('posts.index', compact('posts'));
     }
 
@@ -21,7 +22,8 @@ class PostController extends Controller
      */
     public function create()
     {
-        return view('posts.create');
+        $users = User::all();
+        return view('posts.create', compact('users'));
     }
 
     /**
@@ -29,8 +31,15 @@ class PostController extends Controller
      */
     public function store(Request $request)
     {
-        Post::create($request->only('title', 'content'));
-        return redirect()->route('posts.index');
+        $data = $request->validate([
+            'title' => 'required|min:3',
+            'content' => 'required|min:3',
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        Post::create($data);
+
+        return redirect()->route('posts.index')->with('success', 'Created');
     }
 
     /**
@@ -46,7 +55,8 @@ class PostController extends Controller
      */
     public function edit(Post $post)
     {
-        return view('posts.edit', compact('post'));
+        $users = User::all();
+        return view('posts.edit', compact('post', 'users'));
     }
 
     /**
@@ -54,7 +64,14 @@ class PostController extends Controller
      */
     public function update(Request $request, Post $post)
     {
-        $post->update($request->only('title', 'content'));
+        $data = $request->validate([
+            'title' => 'required|min:3',
+            'content' => 'required|min:3',
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        $post->update($data);
+
         return redirect()->route('posts.index');
     }
 
@@ -65,5 +82,20 @@ class PostController extends Controller
     {
         $post->delete();
         return redirect()->route('posts.index');
+    }
+
+    public function restore($id)
+    {
+        Post::withTrashed()->find($id)->restore();
+
+        return back();
+    }
+
+    public function forceDelete($id)
+    {
+        $post = Post::withTrashed()->findOrFail($id);
+        $post->forceDelete();
+
+        return back()->with('success', 'Post permanently deleted');
     }
 }
