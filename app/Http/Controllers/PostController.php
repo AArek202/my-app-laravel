@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
@@ -13,7 +15,7 @@ class PostController extends Controller
      */
     public function index()
     {
-        $posts = Post::withTrashed()->latest()->paginate(10);
+        $posts = Post::withTrashed()->with('user')->latest()->paginate(10);
         return view('posts.index', compact('posts'));
     }
 
@@ -35,7 +37,19 @@ class PostController extends Controller
             'title' => 'required|min:3',
             'content' => 'required|min:3',
             'user_id' => 'required|exists:users,id',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            ],
+            [
+                'image.image' => 'The file must be an image.',
+                'image.mimes' => 'Allowed formats: jpg, jpeg, png, gif.',
+                'image.max' => 'Image size must not exceed 2MB.',
         ]);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('posts', 'public');
+        }
+
+        $data['user_id'] = Auth::id();
 
         Post::create($data);
 
@@ -68,7 +82,17 @@ class PostController extends Controller
             'title' => 'required|min:3',
             'content' => 'required|min:3',
             'user_id' => 'required|exists:users,id',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
+
+        if ($request->hasFile('image')) {
+
+            if ($post->image) {
+                Storage::disk('public')->delete($post->image);
+            }
+
+            $data['image'] = $request->file('image')->store('posts', 'public');
+        }
 
         $post->update($data);
 
@@ -94,6 +118,9 @@ class PostController extends Controller
     public function forceDelete($id)
     {
         $post = Post::withTrashed()->findOrFail($id);
+        if ($post->image) {
+            Storage::disk('public')->delete($post->image);
+        }
         $post->forceDelete();
 
         return back()->with('success', 'Post permanently deleted');
