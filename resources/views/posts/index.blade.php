@@ -18,7 +18,7 @@
         @foreach($posts as $post)
         <div class="bg-white shadow-md rounded-2xl p-6 border mt-5">
 
-            <a href="{{ route('posts.show', $post->id) }}">
+            <a href="{{ route('posts.show', ['post' => $post->slug]) }}">
                 <h2 class="text-2xl font-semibold text-gray-800 mb-3">
                     {{ $post->title }}
                 </h2>
